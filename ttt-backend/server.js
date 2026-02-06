@@ -1,17 +1,14 @@
 import express from "express"
-import dotenv from "dotenv"
-import OpenAI from "openai"
+import fetch from "node-fetch"
 import cors from "cors"
 
-dotenv.config()
+
 
 const app = express()
 app.use(cors())
 app.use(express.json())
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-})
+
 
 app.post("/ai-move", async (req, res) =>{
     const {board} = req.body
@@ -28,43 +25,73 @@ app.post("/ai-move", async (req, res) =>{
     - "X" = human
     - "O" = you
     - null = empty
-    - You MUST return ONLY valid JSON
     - You MUST choose an empty cell
     - No explanations, no text
     
     Board:
     ${JSON.stringify(board)}
-    
-    return exactly:
-    { "move": number}
      `
 
-     try{
-        const response = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: [{ role: "user", content: prompt}],
-            temperature: 0
+     try{  
+        const response = await fetch("http://localhost:11434/api/generate",{
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                model: "phi3",
+                prompt,
+                stream: false
+            })
         })
 
-        const text = response.choices[0].message.content.trim()
+        const data = await response.json()
+        const raw = data.response || "";
+        const move = tryParseMove(raw)
+
+        if (move === null)
+        {throw new Error("move === null")}
+
+        const text = data.response.trim()
         const parsed = JSON.parse(text)
 
         if(
             typeof parsed.move !== "number" ||
-            parsed.move < 0 ||
-            parsed.move > 8 ||
+            parsed.move <0 ||
+            parsed.move >8 ||
             board[parsed.move] !== null
         ){
-            return res.status(400).json({ error: "AI returned invalid move"})
+            throw new Error("Invalid Move")
         }
 
         res.json({move: parsed.move})
+
      } catch(err){
-        console.error(err)
-        res.status(500).json({error: "AI Failure"})
+
+        console.error("Reason why it failed:", err.message)
+        res.status(500).json({error: "Local AI Failed"})
      }
 })
 
 app.listen(3000, ()=>{
     console.log("AI Server running on http://localhost:3000")
 })
+
+
+function tryParseMove(text){
+    if(!text) return null
+
+    const match = text.match(/\{[\s\S]*?\}/)
+    if(!match) return null
+    
+    try{
+        const obj = JSON.parse(
+            match[0]
+                .replace(/,\s*}/g, "}")
+                .replace(/,\s*}/g, "]")
+            )
+
+            if(typeof obj.move === "number"){
+                return obj.move
+            }
+        } catch{}
+        return null
+    }

@@ -37,6 +37,12 @@ function isDraw(board) {
 
 function makeMove(index, player) {
 
+
+    if(index === null || index === undefined){
+        console.warn("Invalid Move index", index)
+        return
+    }
+
     board[index] = player
     cells[index].textContent = player
 
@@ -62,17 +68,21 @@ function makeMove(index, player) {
 //UI Control
 cells.forEach(cell => {
     cell.addEventListener("click", async () => {
-        const index = cell.dataset.index
+        const index = Number(cell.dataset.index)
 
+        if(!Number.isInteger(index)) return
         if (board[index] || gameOver || currentPlayer !== HUMAN) return
 
         makeMove(index, HUMAN)
         
         if(!gameOver){
             aiThinking(true)
-            const move = await aiMove()
+            const result = await aiMove()
             aiThinking(false)
-            makeMove(move, AI)
+
+            if(result && Number.isInteger(result.move)){
+            makeMove(result.move, AI)
+            statusE1.textContent = `AI (${result.source})`}
         }
 
     })
@@ -166,12 +176,14 @@ function bestMove(){
 async function aiMove() {
     try{
         const move = await aiMoveFromAPI()
-        if(board[move]=== null)return move
+        if(Number.isInteger(move) && board[move] === null){
+            return {move, source:"Ollama"}
+        }
     }catch(e){
-        console.warn("API Failed")
+        console.warn("API Failed, MiniMax")
     }
 
-    return bestMove()
+    return {move: bestMove(), source: "minimax"}
     
 }
 
