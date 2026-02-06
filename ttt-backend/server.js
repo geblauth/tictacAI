@@ -27,6 +27,7 @@ app.post("/ai-move", async (req, res) =>{
     - null = empty
     - You MUST choose an empty cell
     - No explanations, no text
+    - You always say the number of the board first
     
     Board:
     ${JSON.stringify(board)}
@@ -45,10 +46,12 @@ app.post("/ai-move", async (req, res) =>{
 
         const data = await response.json()
         const raw = data.response || "";
+        console.log(raw)
         const move = tryParseMove(raw)
+        console.log(move)
 
         if (move === null)
-        {throw new Error("move === null")}
+        {throw new Error("move:", move)}
 
         const text = data.response.trim()
         const parsed = JSON.parse(text)
@@ -77,6 +80,7 @@ app.listen(3000, ()=>{
 
 
 function tryParseMove(text){
+
     if(!text) return null
 
     const match = text.match(/\{[\s\S]*?\}/)
@@ -86,7 +90,7 @@ function tryParseMove(text){
         const obj = JSON.parse(
             match[0]
                 .replace(/,\s*}/g, "}")
-                .replace(/,\s*}/g, "]")
+                .replace(/,\s*]/g, "]")
             )
 
             if(typeof obj.move === "number"){
