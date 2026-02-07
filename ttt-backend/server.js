@@ -46,9 +46,7 @@ app.post("/ai-move", async (req, res) =>{
 
         const data = await response.json()
         const raw = data.response || "";
-        console.log(raw)
         const move = tryParseMove(raw)
-        console.log(move)
 
         if (move === null)
         {throw new Error("move:", move)}
